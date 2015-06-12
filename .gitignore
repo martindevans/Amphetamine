@@ -1,0 +1,13 @@
+*.ncrunchproject
+
+*.ncrunchsolution
+*.cache
+_ReSharper.Amphetamine
+*.user
+*.suo
+
+Amphetamine/bin
+Amphetamine/obj
+
+Amphetamine.Tests/bin
+Amphetamine.Tests/obj
