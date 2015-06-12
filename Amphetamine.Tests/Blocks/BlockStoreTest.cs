@@ -1,5 +1,8 @@
 ﻿using System;
+using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Amphetamine.Blocks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -92,6 +95,40 @@ namespace Amphetamine.Tests
         public void AssertThat_NegativeOffset_Throws_WhenOpeningStream()
         {
             _store.Read(-1);
+        }
+
+        [TestMethod]
+        public unsafe void AssertThat_AcquirePointer_IsWriteable()
+        {
+            const int VALUE = 23523;
+
+            //Write the value (using a pointer)
+            using (var block = _store.Acquire(0))
+            {
+                var i = (int*)block.Pointer;
+                (*i) = VALUE;
+            }
+
+            //Read the value (conventionally)
+            var b = new BinaryReader(_store.Read(0));
+            Assert.AreEqual(VALUE, b.ReadInt32());
+        }
+
+        [TestMethod]
+        public unsafe void AssertThat_AcquirePointer_IsReadable()
+        {
+            const int VALUE = 23523;
+
+            //Write the value (conventionally)
+            var b = new BinaryWriter(_store.Write(0));
+            b.Write(VALUE);
+
+            //Read the value (using a pointer)
+            using (var block = _store.Acquire(0))
+            {
+                var i = (int*)block.Pointer;
+                Assert.AreEqual(VALUE, *i);
+            }
         }
     }
 }

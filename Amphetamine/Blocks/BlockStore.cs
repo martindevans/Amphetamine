@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 
 namespace Amphetamine.Blocks
 {
@@ -21,6 +22,8 @@ namespace Amphetamine.Blocks
             }
         }
 
+        private long _rootOffset;
+
         private BlockStore(MemoryMappedFile file)
         {
             _file = file;
@@ -28,27 +31,53 @@ namespace Amphetamine.Blocks
 
         private void Open()
         {
-            using (var stream = _file.CreateViewStream(0, StoreHeader.SIZE))
-                _header = StoreHeader.Read(stream);
+            //Calculate the amount we need to offset records by to make space for the header
+            _rootOffset = Marshal.SizeOf(typeof(StoreHeader));
+
+            //Copy header out of memory map
+            using (var pointer = AcquireAtOffset(0, _rootOffset))
+            unsafe
+            {
+                _header = *((StoreHeader*)pointer.Pointer);
+            }
+
+            //Check that the magic is correct
+            if (_header.Magic != StoreHeader.MAGIC)
+                throw new ArgumentException("Incorrect blockstore header magic");
         }
 
         private void Create(int pageSize = 16384)
         {
-            StoreHeader h = new StoreHeader(
-                blockSize: pageSize
-            );
+            //Calculate the amount we need to offset records by to make space for the header
+            _rootOffset = Marshal.SizeOf(typeof(StoreHeader));
 
-            using (var stream = _file.CreateViewStream(0, StoreHeader.SIZE))
-                h.Write(stream);
+            using (var a = _file.CreateViewAccessor())
+            {
+                StoreHeader h = new StoreHeader(
+                    blockSize: pageSize,
+                    totalSize: a.Capacity
+                );
+
+                //Write store header
+                using (var pointer = AcquireAtOffset(0, _rootOffset))
+                unsafe
+                {
+                    *((StoreHeader*)pointer.Pointer) = h;
+                }
+            }
         }
 
-        private Stream GetStream(long id, MemoryMappedFileAccess access)
+        private long Offset(long id)
         {
             if (id < 0)
                 throw new ArgumentOutOfRangeException("id");
 
-            var offset = id * _header.BlockSize + StoreHeader.SIZE;
-            return _file.CreateViewStream(offset, _header.BlockSize, access);
+            return id * _header.BlockSize + _rootOffset;
+        }
+
+        private Stream GetStream(long id, MemoryMappedFileAccess access)
+        {
+            return _file.CreateViewStream(Offset(id), _header.BlockSize, access);
         }
 
         public Stream Read(long id)
@@ -59,6 +88,17 @@ namespace Amphetamine.Blocks
         public Stream Write(long id)
         {
             return GetStream(id, MemoryMappedFileAccess.Write);
+        }
+
+        private BlockPointer AcquireAtOffset(long offset, long size)
+        {
+            var accessor = _file.CreateViewAccessor(offset, size);
+            return new BlockPointer(accessor, offset);
+        }
+
+        public BlockPointer Acquire(long id)
+        {
+            return AcquireAtOffset(Offset(id), _header.BlockSize);
         }
 
         #region static factories
@@ -103,11 +143,11 @@ namespace Amphetamine.Blocks
                 if (disposing)
                 {
                     //Dispose unmanaged resources
-                    _file.Dispose();
+                    //(none)
                 }
 
                 //Dispose managed resources
-                //(none)
+                _file.Dispose();
             }
 
             _disposed = true;
