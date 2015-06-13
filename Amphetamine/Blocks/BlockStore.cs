@@ -63,7 +63,7 @@ namespace Amphetamine.Blocks
         }
         #endregion
 
-        private long Offset(long id)
+        public long Offset(long id)
         {
             if (id < 0)
                 throw new ArgumentOutOfRangeException("id");
@@ -71,12 +71,7 @@ namespace Amphetamine.Blocks
             return id * _header.BlockSize + _rootOffset;
         }
 
-        private Stream GetStream(long id, long length, MemoryMappedFileAccess access)
-        {
-            return _file.CreateViewStream(Offset(id), length, access);
-        }
-
-        public Stream Open(long id, bool read = false, bool write = false)
+        public Stream OpenAtOffset(long offset, long length, bool read, bool write)
         {
             MemoryMappedFileAccess access;
             if (read && write)
@@ -88,10 +83,15 @@ namespace Amphetamine.Blocks
             else
                 throw new InvalidOperationException("Must specify read/write when Opening a block");
 
-            return GetStream(id, _header.BlockSize, access);
+            return _file.CreateViewStream(offset, length, access);
         }
 
-        private BlockPointer AcquireAtOffset(long offset, long size)
+        public Stream Open(long id, bool read = false, bool write = false)
+        {
+            return OpenAtOffset(Offset(id), _header.BlockSize, read, write);
+        }
+
+        public BlockPointer AcquireAtOffset(long offset, long size)
         {
             var accessor = _file.CreateViewAccessor(offset, size);
             return new BlockPointer(accessor, offset, size);

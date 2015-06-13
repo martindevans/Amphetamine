@@ -43,6 +43,8 @@
   <ItemGroup>
     <Compile Include="Blocks\BlockStore.cs" />
     <Compile Include="Blocks\BlockPointer.cs" />
+    <Compile Include="Extensions\MemoryMappedFileExtensions.cs" />
+    <Compile Include="Extensions\IntPtrExtensions.cs" />
     <Compile Include="Files\FileHeader.cs" />
     <Compile Include="Files\FileStore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

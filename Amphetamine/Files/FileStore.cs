@@ -1,9 +1,8 @@
-﻿
+﻿using Amphetamine.Blocks;
+using Amphetamine.Extensions;
 using System;
 using System.Globalization;
 using System.IO;
-using System.IO.MemoryMappedFiles;
-using Amphetamine.Blocks;
 
 namespace Amphetamine.Files
 {
@@ -28,10 +27,8 @@ namespace Amphetamine.Files
         {
         }
 
-        private Stream GetStream(long id, MemoryMappedFileAccess access)
+        private FileHeader GetFileHeader(long id)
         {
-            long length, start;
-
             using (var ptr = _blocks.Acquire(id))
             unsafe
             {
@@ -39,37 +36,47 @@ namespace Amphetamine.Files
                 if (header->Magic != FileHeader.MAGIC)
                     throw new FileNotFoundException("No file header found", id.ToString(CultureInfo.InvariantCulture));
 
-                length = header->Length;
-                start = header->StartOffset;
+                return *header;
             }
-
-            //return _blocks.GetStreamAtOffset(start, length, access);
-            throw new NotImplementedException();
         }
 
-        public Stream Read(long id)
+        public Stream Open(long id, bool read = false, bool write = false)
         {
-            return GetStream(id, MemoryMappedFileAccess.Read);
-        }
-
-        public Stream Write(long id)
-        {
-            return GetStream(id, MemoryMappedFileAccess.Read);
+            var h = GetFileHeader(id);
+            return _blocks.OpenAtOffset(h.StartOffset, h.Length, read, write);
         }
 
         public BlockPointer Acquire(long id)
         {
-            throw new NotImplementedException();
+            var h = GetFileHeader(id);
+            return _blocks.AcquireAtOffset(h.StartOffset, h.Length);
         }
 
         public void Create(long id, long size)
         {
-            throw new NotImplementedException();
+            using (var file = _blocks.Acquire(id))
+            unsafe
+            {
+                *((FileHeader*)file.Pointer) = new FileHeader(
+                    id,
+                    _blocks.Offset(id),
+                    size
+                );
+            }
         }
 
-        public void Delete(long id)
+        public void Delete(long id, bool clear = false)
         {
-            throw new NotImplementedException();
+            using (var file = _blocks.Acquire(id))
+            unsafe
+            {
+                //Clear file header
+                *((FileHeader*)file.Pointer) = default(FileHeader);
+
+                //Clear the actual data (if necessary)
+                if (clear)
+                    new IntPtr(file.Pointer).MemSet(file.Length, 0);
+            }
         }
 
         #region static factories
