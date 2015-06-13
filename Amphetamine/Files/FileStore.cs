@@ -1,6 +1,8 @@
 ﻿
 using System;
+using System.Globalization;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using Amphetamine.Blocks;
 
 namespace Amphetamine.Files
@@ -12,8 +14,6 @@ namespace Amphetamine.Files
         : IDisposable
     {
         private readonly BlockStore _blocks;
-
-        private AllocationTableHeader[] _headers;
 
         private FileStore(BlockStore blocks)
         {
@@ -28,22 +28,46 @@ namespace Amphetamine.Files
         {
         }
 
+        private Stream GetStream(long id, MemoryMappedFileAccess access)
+        {
+            long length, start;
+
+            using (var ptr = _blocks.Acquire(id))
+            unsafe
+            {
+                var header = (FileHeader*)ptr.Pointer;
+                if (header->Magic != FileHeader.MAGIC)
+                    throw new FileNotFoundException("No file header found", id.ToString(CultureInfo.InvariantCulture));
+
+                length = header->Length;
+                start = header->StartOffset;
+            }
+
+            //return _blocks.GetStreamAtOffset(start, length, access);
+            throw new NotImplementedException();
+        }
+
         public Stream Read(long id)
         {
-            throw new NotImplementedException();
+            return GetStream(id, MemoryMappedFileAccess.Read);
         }
 
         public Stream Write(long id)
         {
-            throw new NotImplementedException();
+            return GetStream(id, MemoryMappedFileAccess.Read);
         }
 
-        public void Create()
+        public BlockPointer Acquire(long id)
         {
             throw new NotImplementedException();
         }
 
-        public void Delete()
+        public void Create(long id, long size)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Delete(long id)
         {
             throw new NotImplementedException();
         }

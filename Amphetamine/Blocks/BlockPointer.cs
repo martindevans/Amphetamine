@@ -10,10 +10,14 @@ namespace Amphetamine.Blocks
 
         private readonly MemoryMappedViewAccessor _accessor;
 
-        public BlockPointer(MemoryMappedViewAccessor accessor, long offset)
+        public long Length { get; private set; }
+
+        public BlockPointer(MemoryMappedViewAccessor accessor, long offset, long length)
         {
             unsafe
             {
+                Length = length;
+
                 byte* ptr = null;
                 _accessor = accessor;
                 accessor.SafeMemoryMappedViewHandle.AcquirePointer(ref ptr);

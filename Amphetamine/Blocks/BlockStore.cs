@@ -22,18 +22,16 @@ namespace Amphetamine.Blocks
             }
         }
 
-        private long _rootOffset;
+        private static readonly long _rootOffset = Marshal.SizeOf(typeof(StoreHeader));
 
         private BlockStore(MemoryMappedFile file)
         {
             _file = file;
         }
 
-        private void Open()
+        #region store header
+        private void ReadStoreHeader()
         {
-            //Calculate the amount we need to offset records by to make space for the header
-            _rootOffset = Marshal.SizeOf(typeof(StoreHeader));
-
             //Copy header out of memory map
             using (var pointer = AcquireAtOffset(0, _rootOffset))
             unsafe
@@ -46,11 +44,8 @@ namespace Amphetamine.Blocks
                 throw new ArgumentException("Incorrect blockstore header magic");
         }
 
-        private void Create(int pageSize = 16384)
+        private void WriteStoreHeader(int pageSize = 16384)
         {
-            //Calculate the amount we need to offset records by to make space for the header
-            _rootOffset = Marshal.SizeOf(typeof(StoreHeader));
-
             using (var a = _file.CreateViewAccessor())
             {
                 StoreHeader h = new StoreHeader(
@@ -66,6 +61,7 @@ namespace Amphetamine.Blocks
                 }
             }
         }
+        #endregion
 
         private long Offset(long id)
         {
@@ -75,25 +71,30 @@ namespace Amphetamine.Blocks
             return id * _header.BlockSize + _rootOffset;
         }
 
-        private Stream GetStream(long id, MemoryMappedFileAccess access)
+        private Stream GetStream(long id, long length, MemoryMappedFileAccess access)
         {
-            return _file.CreateViewStream(Offset(id), _header.BlockSize, access);
+            return _file.CreateViewStream(Offset(id), length, access);
         }
 
-        public Stream Read(long id)
+        public Stream Open(long id, bool read = false, bool write = false)
         {
-            return GetStream(id, MemoryMappedFileAccess.Read);
-        }
+            MemoryMappedFileAccess access;
+            if (read && write)
+                access = MemoryMappedFileAccess.ReadWrite;
+            else if (read)
+                access = MemoryMappedFileAccess.Read;
+            else if (write)
+                access = MemoryMappedFileAccess.Write;
+            else
+                throw new InvalidOperationException("Must specify read/write when Opening a block");
 
-        public Stream Write(long id)
-        {
-            return GetStream(id, MemoryMappedFileAccess.Write);
+            return GetStream(id, _header.BlockSize, access);
         }
 
         private BlockPointer AcquireAtOffset(long offset, long size)
         {
             var accessor = _file.CreateViewAccessor(offset, size);
-            return new BlockPointer(accessor, offset);
+            return new BlockPointer(accessor, offset, size);
         }
 
         public BlockPointer Acquire(long id)
@@ -110,7 +111,7 @@ namespace Amphetamine.Blocks
         public static BlockStore Open(MemoryMappedFile file)
         {
             var b = new BlockStore(file);
-            b.Open();
+            b.ReadStoreHeader();
             return b;
         }
 
@@ -122,8 +123,8 @@ namespace Amphetamine.Blocks
         public static BlockStore Create(MemoryMappedFile file)
         {
             var b = new BlockStore(file);
-            b.Create();
-            b.Open();
+            b.WriteStoreHeader();
+            b.ReadStoreHeader();
             return b;
         }
         #endregion

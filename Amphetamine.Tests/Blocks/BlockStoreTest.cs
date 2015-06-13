@@ -1,12 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Amphetamine.Blocks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Amphetamine.Tests
+namespace Amphetamine.Tests.Blocks
 {
     [TestClass]
     public class BlockStoreTest
@@ -54,7 +52,7 @@ namespace Amphetamine.Tests
         [TestMethod]
         public void AssertThat_BlockStoreRead_ReadsZeroForNullBlock()
         {
-            using (var str = _store.Read(24))
+            using (var str = _store.Open(24, read: true))
             {
                 byte[] bytes = new byte[_store.BlockSize];
                 str.Read(bytes, 0, _store.BlockSize);
@@ -71,7 +69,7 @@ namespace Amphetamine.Tests
             Random r = new Random();
             r.NextBytes(data);
 
-            using (var str = _store.Write(12))
+            using (var str = _store.Open(12, write: true))
                 str.Write(data, 0, data.Length);
         }
 
@@ -79,7 +77,7 @@ namespace Amphetamine.Tests
         [ExpectedException(typeof(NotSupportedException))]
         public void AssertThat_ReadStream_Throws_WhenWrittenTo()
         {
-            using (var str = _store.Read(2))
+            using (var str = _store.Open(2, read: true))
                 str.WriteByte(1);
         }
 
@@ -87,14 +85,14 @@ namespace Amphetamine.Tests
         [ExpectedException(typeof(UnauthorizedAccessException))]
         public void AssertThat_VeryLargeOffset_Throws_WhenOpeningStream()
         {
-            _store.Read(100);
+            _store.Open(100, read: true);
         }
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void AssertThat_NegativeOffset_Throws_WhenOpeningStream()
         {
-            _store.Read(-1);
+            _store.Open(-1, read: true);
         }
 
         [TestMethod]
@@ -110,7 +108,7 @@ namespace Amphetamine.Tests
             }
 
             //Read the value (conventionally)
-            var b = new BinaryReader(_store.Read(0));
+            var b = new BinaryReader(_store.Open(0, read: true));
             Assert.AreEqual(VALUE, b.ReadInt32());
         }
 
@@ -120,7 +118,7 @@ namespace Amphetamine.Tests
             const int VALUE = 23523;
 
             //Write the value (conventionally)
-            var b = new BinaryWriter(_store.Write(0));
+            var b = new BinaryWriter(_store.Open(0, write: true));
             b.Write(VALUE);
 
             //Read the value (using a pointer)
