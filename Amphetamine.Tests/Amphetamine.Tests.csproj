@@ -53,6 +53,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Blocks\BlockStoreTest.cs" />
+    <Compile Include="Extensions\IntPtrExtensionsTest.cs" />
     <Compile Include="Files\FileStoreTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

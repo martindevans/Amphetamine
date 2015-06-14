@@ -75,7 +75,7 @@ namespace Amphetamine.Files
 
                 //Clear the actual data (if necessary)
                 if (clear)
-                    new IntPtr(file.Pointer).MemSet(file.Length, 0);
+                    new IntPtr(file.Pointer).MemSet(0, file.Length);
             }
         }
 
