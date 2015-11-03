@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Amphetamine", "Amphetamine\Amphetamine.csproj", "{8A0D903B-8B0B-4E14-9159-E1897153714D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Amphetamine.Tests", "Amphetamine.Tests\Amphetamine.Tests.csproj", "{3D58CB55-0072-4721-8313-2B46CE28B8BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample", "Sample\Sample.csproj", "{86B5E9AE-9C66-4669-A93D-BB528C5C7048}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{3D58CB55-0072-4721-8313-2B46CE28B8BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D58CB55-0072-4721-8313-2B46CE28B8BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D58CB55-0072-4721-8313-2B46CE28B8BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86B5E9AE-9C66-4669-A93D-BB528C5C7048}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86B5E9AE-9C66-4669-A93D-BB528C5C7048}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86B5E9AE-9C66-4669-A93D-BB528C5C7048}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86B5E9AE-9C66-4669-A93D-BB528C5C7048}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

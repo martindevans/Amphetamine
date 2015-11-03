@@ -1,39 +1,42 @@
-﻿using Amphetamine.Blocks;
-using Amphetamine.Extensions;
-using System;
+﻿using System;
 using System.Globalization;
 using System.IO;
+using Amphetamine.Blocks;
+using Amphetamine.Extensions;
 
-namespace Amphetamine.Files
+namespace Amphetamine.Buffers
 {
     /// <summary>
-    /// An extremely simple file store, stores files in contiguous blocks in a block store
+    /// A store of variable size buffers in a memory mapped file
     /// </summary>
-    public sealed class FileStore
+    /// <remarks>Based on the <see cref="BlockStore"></see>. Each buffer is a continuous set of blocks</remarks>
+    public sealed class BufferStore
         : IDisposable
     {
-        private readonly BlockStore _blocks;
+        public BlockStore Blocks { get; }
 
-        private FileStore(BlockStore blocks)
+        private BufferStore(BlockStore blocks)
         {
-            _blocks = blocks;
+            Blocks = blocks;
         }
 
         private void OpenStore()
         {
+            //Read any necessary initialisation information from the block store
         }
 
         private void CreateStore()
         {
+            //Write any necessary initialisation information from the block store
         }
 
-        private FileHeader GetFileHeader(long id)
+        private BufferHeader GetFileHeader(long id)
         {
-            using (var ptr = _blocks.Acquire(id))
+            using (var ptr = Blocks.Acquire(id))
             unsafe
             {
-                var header = (FileHeader*)ptr.Pointer;
-                if (header->Magic != FileHeader.MAGIC)
+                var header = (BufferHeader*)ptr.Pointer;
+                if (header->Magic != BufferHeader.MAGIC)
                     throw new FileNotFoundException("No file header found", id.ToString(CultureInfo.InvariantCulture));
 
                 return *header;
@@ -43,23 +46,28 @@ namespace Amphetamine.Files
         public Stream Open(long id, bool read = false, bool write = false)
         {
             var h = GetFileHeader(id);
-            return _blocks.OpenAtOffset(h.StartOffset, h.Length, read, write);
+            return Blocks.OpenAtOffset(h.StartOffset, h.Length, read, write);
         }
 
         public BlockPointer Acquire(long id)
         {
             var h = GetFileHeader(id);
-            return _blocks.AcquireAtOffset(h.StartOffset, h.Length);
+            return Blocks.AcquireAtOffset(h.StartOffset, h.Length);
         }
 
+        /// <summary>
+        /// Create a new file
+        /// </summary>
+        /// <param name="id">Unique ID of this file</param>
+        /// <param name="size">The size (in bytes) of this file</param>
         public void Create(long id, long size)
         {
-            using (var file = _blocks.Acquire(id))
+            using (var file = Blocks.Acquire(id))
             unsafe
             {
-                *((FileHeader*)file.Pointer) = new FileHeader(
+                *((BufferHeader*)file.Pointer) = new BufferHeader(
                     id,
-                    _blocks.Offset(id),
+                    Blocks.Offset(id),
                     size
                 );
             }
@@ -67,29 +75,30 @@ namespace Amphetamine.Files
 
         public void Delete(long id, bool clear = false)
         {
-            using (var file = _blocks.Acquire(id))
+            using (var file = Blocks.Acquire(id))
             unsafe
             {
                 //Clear file header
-                *((FileHeader*)file.Pointer) = default(FileHeader);
+                *((BufferHeader*)file.Pointer) = default(BufferHeader);
 
                 //Clear the actual data (if necessary)
                 if (clear)
-                    new IntPtr(file.Pointer).MemSet(0, file.Length);
+                    file.Pointer.MemSet(0, file.Length);
             }
         }
 
         #region static factories
-        public static FileStore Create(BlockStore blockStorage)
+        public static BufferStore Create(BlockStore blockStorage)
         {
-            var b = new FileStore(blockStorage);
+            var b = new BufferStore(blockStorage);
             b.CreateStore();
+            b.OpenStore();
             return b;
         }
 
-        public static FileStore Open(BlockStore blockStorage)
+        public static BufferStore Open(BlockStore blockStorage)
         {
-            var b = new FileStore(blockStorage);
+            var b = new BufferStore(blockStorage);
             b.OpenStore();
             return b;
         }
@@ -114,7 +123,7 @@ namespace Amphetamine.Files
                 }
 
                 //Dispose managed resources
-                _blocks.Dispose();
+                Blocks.Dispose();
             }
 
             _disposed = true;

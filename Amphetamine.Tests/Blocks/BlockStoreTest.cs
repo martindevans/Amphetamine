@@ -26,6 +26,12 @@ namespace Amphetamine.Tests.Blocks
         }
 
         [TestMethod]
+        public void AssertThat_BlockStoreCount_IsCorrect()
+        {
+            Assert.AreEqual(1000000 / _store.BlockSize, _store.BlockCount);
+        }
+
+        [TestMethod]
         public void AssertThat_BlockStoreDispose_ClosesFile()
         {
             _store.Dispose();
@@ -82,10 +88,10 @@ namespace Amphetamine.Tests.Blocks
         }
 
         [TestMethod]
-        [ExpectedException(typeof(UnauthorizedAccessException))]
+        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void AssertThat_VeryLargeOffset_Throws_WhenOpeningStream()
         {
-            _store.Open(100, read: true);
+            _store.Open(_store.BlockCount + 1, read: true);
         }
 
         [TestMethod]

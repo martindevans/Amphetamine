@@ -3,6 +3,7 @@
 *.ncrunchsolution
 *.cache
 _ReSharper.Amphetamine
+_ReSharper.Caches
 *.user
 *.suo
 
@@ -11,3 +12,6 @@ Amphetamine/obj
 
 Amphetamine.Tests/bin
 Amphetamine.Tests/obj
+
+Sample/bin
+Sample/obj

@@ -1,12 +1,12 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Amphetamine.Files
+namespace Amphetamine.Buffers
 {
     /// <summary>
-    /// Individual file record in an allocation table, table is filled with these records
+    /// A header placed at the start of a buffer
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    internal struct FileHeader
+    internal struct BufferHeader
     {
         public const ulong MAGIC = 0xFE8877EF5D2E1F9B;
 
@@ -16,27 +16,32 @@ namespace Amphetamine.Files
         /// <summary>
         /// ID of this file
         /// </summary>
-        [FieldOffset(sizeof(long) * 0)]
-        public long FileId;
+        [FieldOffset(sizeof(long) * 1)]
+        public readonly long FileId;
 
         /// <summary>
         /// Start position of this file
         /// </summary>
-        [FieldOffset(sizeof(long) * 1)]
-        public long StartOffset;
+        [FieldOffset(sizeof(long) * 2)]
+        public readonly long StartOffset;
 
         /// <summary>
         /// Length of this file
         /// </summary>
-        [FieldOffset(sizeof(long) * 2)]
-        public long Length;
+        [FieldOffset(sizeof(long) * 3)]
+        public readonly long Length;
 
-        public FileHeader(long fileId, long offset, long length)
+        public BufferHeader(long fileId, long offset, long length)
         {
             Magic = MAGIC;
 
             FileId = fileId;
-            StartOffset = offset;
+
+            unsafe
+            {
+                StartOffset = offset + sizeof(BufferHeader);
+            }
+
             Length = length;
         }
     }

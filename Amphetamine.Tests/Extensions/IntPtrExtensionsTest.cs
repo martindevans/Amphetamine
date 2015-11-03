@@ -1,6 +1,7 @@
 ﻿using Amphetamine.Extensions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Runtime.InteropServices;
 
 namespace Amphetamine.Tests.Extensions
 {
@@ -37,11 +38,11 @@ namespace Amphetamine.Tests.Extensions
             }
 
             //Check that the specified range has been set
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
                 Assert.AreEqual(3, _data[i]);
 
             //Check that outside the specified range has *not* been set
-            for (int i = 5; i < _data.Length; i++)
+            for (var i = 5; i < _data.Length; i++)
                 Assert.AreEqual(i + 1, _data[i]);
         }
 
@@ -59,10 +60,56 @@ namespace Amphetamine.Tests.Extensions
                 Assert.AreEqual(3, _data[i]);
 
             //Check that outside the specified range has *not* been set
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
                 Assert.AreEqual(i + 1, _data[i]);
-            for (int i = 8; i < _data.Length; i++)
+            for (var i = 8; i < _data.Length; i++)
                 Assert.AreEqual(i + 1, _data[i]);
+        }
+
+        [TestMethod]
+        public void AssertThat_PointerSet_SetsValueIntoPointer()
+        {
+            //Test data
+            TestStruct data = new TestStruct { A = 123424, B = 6463 };
+
+            //Write data into byte array by setting pointer
+            byte[] output = new byte[12];
+            fixed (byte* a = &output[0])
+                new IntPtr(a).Set(ref data);
+
+            //Check that the values in the array are as we expect
+            Assert.AreEqual(data.A, BitConverter.ToInt32(output, 0));
+            Assert.AreEqual(data.B, BitConverter.ToInt32(output, 4));
+        }
+
+        [TestMethod]
+        public void AssertThat_PointerAs_GetsValueInPointer()
+        {
+            //Test data
+            TestStruct data = new TestStruct { A = 123424, B = 6463 };
+
+            //Write data into byte array by setting pointer
+            byte[] output = new byte[12];
+            fixed (byte* a = &output[0])
+                new IntPtr(a).Set(ref data);
+
+            TestStruct o;
+            fixed (byte* a = &output[0])
+                new IntPtr(a).As(out o);
+
+            //Check that the values we read are as expected
+            Assert.AreEqual(data.A, o.A);
+            Assert.AreEqual(data.B, o.B);
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct TestStruct
+        {
+            [FieldOffset(0)]
+            public int A;
+
+            [FieldOffset(4)]
+            public long B;
         }
     }
 }

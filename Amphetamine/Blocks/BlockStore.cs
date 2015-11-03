@@ -6,12 +6,19 @@ using System.Runtime.InteropServices;
 namespace Amphetamine.Blocks
 {
     /// <summary>
-    /// An extremely simple block store, simply stores fixed size blocks of data in a memory mapped file
+    /// A store of fixed size pages in a memory mapped file
     /// </summary>
     public sealed class BlockStore
         : IDisposable
     {
         private readonly MemoryMappedFile _file;
+
+        private readonly long _length;
+
+        public long BlockCount
+        {
+            get { return _length / BlockSize; }
+        }
 
         private StoreHeader _header;
         public int BlockSize
@@ -27,6 +34,9 @@ namespace Amphetamine.Blocks
         private BlockStore(MemoryMappedFile file)
         {
             _file = file;
+
+            using (var view = file.CreateViewAccessor())
+                _length = view.Capacity;
         }
 
         #region store header
@@ -66,11 +76,23 @@ namespace Amphetamine.Blocks
         public long Offset(long id)
         {
             if (id < 0)
-                throw new ArgumentOutOfRangeException("id");
+                throw new ArgumentOutOfRangeException(nameof(id));
 
-            return id * _header.BlockSize + _rootOffset;
+            var off = id * _header.BlockSize + _rootOffset;
+            if (off > _length)
+                throw new ArgumentOutOfRangeException(nameof(id), $"Cannot calculate offset for block {id}, it is out of range");
+
+            return off;
         }
 
+        /// <summary>
+        /// Open a stream at the given offset, with the given length and access type (no respect for block boundaries)
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="length"></param>
+        /// <param name="read"></param>
+        /// <param name="write"></param>
+        /// <returns></returns>
         public Stream OpenAtOffset(long offset, long length, bool read, bool write)
         {
             MemoryMappedFileAccess access;
@@ -86,17 +108,35 @@ namespace Amphetamine.Blocks
             return _file.CreateViewStream(offset, length, access);
         }
 
+        /// <summary>
+        /// Open a stream to the given block
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="read"></param>
+        /// <param name="write"></param>
+        /// <returns></returns>
         public Stream Open(long id, bool read = false, bool write = false)
         {
             return OpenAtOffset(Offset(id), _header.BlockSize, read, write);
         }
 
+        /// <summary>
+        /// Acquire a pointer at the given offset, with the given length (no respect for block boundaries)
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
         public BlockPointer AcquireAtOffset(long offset, long size)
         {
             var accessor = _file.CreateViewAccessor(offset, size);
             return new BlockPointer(accessor, offset, size);
         }
 
+        /// <summary>
+        /// Acquire a point to the block with the given ID
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public BlockPointer Acquire(long id)
         {
             return AcquireAtOffset(Offset(id), _header.BlockSize);
@@ -119,11 +159,12 @@ namespace Amphetamine.Blocks
         /// Create a new block store in the specified file
         /// </summary>
         /// <param name="file"></param>
+        /// <param name="pageSize"></param>
         /// <returns></returns>
-        public static BlockStore Create(MemoryMappedFile file)
+        public static BlockStore Create(MemoryMappedFile file, int pageSize = 16384)
         {
             var b = new BlockStore(file);
-            b.WriteStoreHeader();
+            b.WriteStoreHeader(pageSize);
             b.ReadStoreHeader();
             return b;
         }
