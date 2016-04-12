@@ -56,19 +56,20 @@ namespace Amphetamine.Blocks
 
         private void WriteStoreHeader(int pageSize = 16384)
         {
+            StoreHeader h;
             using (var a = _file.CreateViewAccessor())
             {
-                StoreHeader h = new StoreHeader(
+                h = new StoreHeader(
                     blockSize: pageSize,
                     totalSize: a.Capacity
                 );
+            }
 
-                //Write store header
-                using (var pointer = AcquireAtOffset(0, _rootOffset))
-                unsafe
-                {
-                    *((StoreHeader*)pointer.Pointer) = h;
-                }
+            //Write store header
+            using (var pointer = AcquireAtOffset(0, _rootOffset))
+            unsafe
+            {
+                *((StoreHeader*)pointer.Pointer) = h;
             }
         }
         #endregion
@@ -128,8 +129,11 @@ namespace Amphetamine.Blocks
         /// <returns></returns>
         public BlockPointer AcquireAtOffset(long offset, long size)
         {
+            if (offset + size > _length)
+                throw new InvalidOperationException($"Attempted to acquire {size} bytes at offset {offset} but this exceeds length of memory map");
+
             var accessor = _file.CreateViewAccessor(offset, size);
-            return new BlockPointer(accessor, offset, size);
+            return new BlockPointer(accessor, true);
         }
 
         /// <summary>

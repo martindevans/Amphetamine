@@ -5,53 +5,68 @@ using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using Amphetamine.Blocks;
 using Amphetamine.Extensions;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
 
 namespace Sample
 {
-    class Program
+    public class Program
     {
+        private readonly BlockStore _store;
+
         private static void Main(string[] args)
         {
-            const int size = 10000000;
-            var f = MemoryMappedFile.CreateNew(Guid.NewGuid().ToString(), 1000000);
+            Console.WriteLine(BenchmarkRunner.Run<Program>());
+        }
 
-            var store = BlockStore.Create(f);
+        public Program()
+        {
+            _store = BlockStore.Create(MemoryMappedFile.CreateNew(Guid.NewGuid().ToString(), 10000));
+        }
 
-            Stopwatch w = new Stopwatch();
-            w.Start();
-            int count = 1000;
-            for (int j = 0; j < count; j++)
+        [Benchmark]
+        public void Pointers()
+        {
+            for (var i = 0; i < (int)_store.BlockCount; i++)
             {
-                for (int i = 0; i < (int)store.BlockCount; i++)
+                var s = new TestStruct
                 {
-                    var s = new TestStruct {
-                        A = i,
-                        B = -i,
-                        C = i * 1.4f,
-                        D = i / 214534574542.2
-                    };
+                    A = i,
+                    B = -i,
+                    C = i * 1.4f,
+                    D = i / 214534574542.2
+                };
 
-                    //using (var stream = new StreamWriter(store.Open(i, false, true)))
-                    //{
-                    //    stream.Write(s.A);
-                    //    stream.Write(s.B);
-                    //    stream.Write(s.C);
-                    //    stream.Write(s.D);
-                    //}
-                    using (var a = store.Acquire(i))
+                using (var a = _store.Acquire(i))
+                {
                     unsafe
                     {
                         *((TestStruct*)a.Pointer.ToPointer()) = s;
                     }
                 }
             }
+        }
 
-            long total = count * store.BlockCount;
-            w.Stop();
-            Console.WriteLine("Total: {0}ms", w.Elapsed.TotalMilliseconds);
-            Console.WriteLine("Per Struct: {0}ms", w.Elapsed.TotalMilliseconds / total);
+        [Benchmark]
+        public void Stream()
+        {
+            for (var i = 0; i < (int)_store.BlockCount; i++)
+            {
+                var s = new TestStruct {
+                    A = i,
+                    B = -i,
+                    C = i * 1.4f,
+                    D = i / 214534574542.2
+                };
 
-            Console.ReadLine();
+                using (var stream = new BinaryWriter(_store.Open(i)))
+                {
+                    stream.Write(s.A);
+                    stream.Write(s.B);
+                    stream.Write(s.C);
+                    stream.Write(s.D);
+                }
+            }
         }
 
         [StructLayout(LayoutKind.Explicit)]

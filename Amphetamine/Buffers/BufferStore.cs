@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using Amphetamine.Blocks;
 using Amphetamine.Extensions;
 
@@ -30,10 +31,9 @@ namespace Amphetamine.Buffers
             //Write any necessary initialisation information from the block store
         }
 
-        private BufferHeader GetFileHeader(long id)
+        private unsafe BufferHeader GetFileHeader(long id)
         {
             using (var ptr = Blocks.Acquire(id))
-            unsafe
             {
                 var header = (BufferHeader*)ptr.Pointer;
                 if (header->Magic != BufferHeader.MAGIC)
@@ -45,14 +45,21 @@ namespace Amphetamine.Buffers
 
         public Stream Open(long id, bool read = false, bool write = false)
         {
-            var h = GetFileHeader(id);
-            return Blocks.OpenAtOffset(h.StartOffset, h.Length, read, write);
+            unsafe
+            {
+                var h = GetFileHeader(id);
+                return Blocks.OpenAtOffset(h.StartOffset, h.Length, read, write);
+            }
         }
 
         public BlockPointer Acquire(long id)
         {
-            var h = GetFileHeader(id);
-            return Blocks.AcquireAtOffset(h.StartOffset, h.Length);
+            unsafe
+            {
+                var h = GetFileHeader(id);
+                var p = Blocks.AcquireAtOffset(h.StartOffset, h.Length);
+                return p;
+            }
         }
 
         /// <summary>
@@ -67,7 +74,7 @@ namespace Amphetamine.Buffers
             {
                 *((BufferHeader*)file.Pointer) = new BufferHeader(
                     id,
-                    Blocks.Offset(id),
+                    Blocks.Offset(id) + Marshal.SizeOf(typeof(BufferHeader)),
                     size
                 );
             }
@@ -79,7 +86,7 @@ namespace Amphetamine.Buffers
             unsafe
             {
                 //Clear file header
-                *((BufferHeader*)file.Pointer) = default(BufferHeader);
+                *(BufferHeader*)Blocks.Acquire(id).Pointer = default(BufferHeader);
 
                 //Clear the actual data (if necessary)
                 if (clear)

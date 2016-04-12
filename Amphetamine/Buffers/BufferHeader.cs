@@ -14,19 +14,19 @@ namespace Amphetamine.Buffers
         public readonly ulong Magic;
 
         /// <summary>
-        /// ID of this file
+        /// ID of this buffer
         /// </summary>
         [FieldOffset(sizeof(long) * 1)]
         public readonly long FileId;
 
         /// <summary>
-        /// Start position of this file
+        /// Start position of this buffer
         /// </summary>
         [FieldOffset(sizeof(long) * 2)]
         public readonly long StartOffset;
 
         /// <summary>
-        /// Length of this file
+        /// Length of this buffer
         /// </summary>
         [FieldOffset(sizeof(long) * 3)]
         public readonly long Length;
